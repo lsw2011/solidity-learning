@@ -101,5 +101,43 @@ describe("My Token", () => {
           ),
       ).to.be.revertedWith("insufficient allowance");
     });
+
+    it("should approve and transferFrom 10 MT, then check balances", async () => {
+      const signer0 = signers[0];
+      const signer1 = signers[1];
+      const amounts = hre.ethers.parseUnits("5", decimals);
+
+      await myTokenC.approve(signer1.address, amounts);
+
+      await expect(
+        myTokenC
+          .connect(signer1)
+          .transferFrom(signer0.address, signer1.address, amounts),
+      )
+        .to.emit(myTokenC, "Transfer")
+        .withArgs(signer0.address, signer1.address, amounts);
+
+      expect(await myTokenC.balanceOf(signer1.address)).to.equal(amounts);
+      expect(await myTokenC.balanceOf(signer0.address)).to.equal(
+        hre.ethers.parseUnits(mintingAmount.toString(), decimals) - amounts,
+      );
+    });
+
+    it("should fail transferFrom when amount exceeds minted supply", async () => {
+      const signer0 = signers[0];
+      const signer1 = signers[1];
+      const excessAmount = hre.ethers.parseUnits(
+        (mintingAmount + 1n).toString(),
+        decimals,
+      );
+
+      await myTokenC.approve(signer1.address, excessAmount);
+
+      await expect(
+        myTokenC
+          .connect(signer1)
+          .transferFrom(signer0.address, signer1.address, excessAmount),
+      ).to.be.reverted;
+    });
   });
 });
