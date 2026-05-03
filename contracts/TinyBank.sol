@@ -12,23 +12,20 @@ interface IMyToken {
     function mint(uint256 amount, address owner) external;
 }
 
-contract Tinybank is ManagedAccess {
+contract TinyBank {
     event Staked(address from, uint256 amount);
-    event Withdrawn(uint256 amount, address to);
+    event Withdraw(uint256 amount, address to);
 
-    IMyToken public stakingToken;
+    IMyToken public stackingToken;
 
     mapping(address => uint256) public lastClaimedBlock;
-
-    uint256 defaultRewardPerBlock = 1 * 10 ** 18;
     uint256 rewardPerBlock = 1 * 10 ** 18;
 
     mapping(address => uint256) public staked;
     uint256 public totalStaked;
 
-    constructor(IMyToken _stakingToken) ManagedAccess(msg.sender, msg.sender) {
-        stakingToken = _stakingToken;
-        rewardPerBlock = defaultRewardPerBlock;
+    constructor(IMyToken _stackingToken) {
+        stackingToken = _stackingToken;
     }
 
     modifier updateReward(address to) {
@@ -36,33 +33,25 @@ contract Tinybank is ManagedAccess {
             uint256 blocks = block.number - lastClaimedBlock[to];
             uint256 reward = (blocks * rewardPerBlock * staked[to]) /
                 totalStaked;
-
-            stakingToken.mint(reward, to);
+            stackingToken.mint(reward, to);
         }
-
         lastClaimedBlock[to] = block.number;
         _;
     }
 
-    function setRewardPerBlock(uint256 _amount) external onlyAllComfirmed {
-        rewardPerBlock = _amount;
-    }
-
     function stake(uint256 _amount) external updateReward(msg.sender) {
         require(_amount >= 0, "cannot stake 0 amount");
-        stakingToken.transferFrom(msg.sender, address(this), _amount);
+        stackingToken.transferFrom(msg.sender, address(this), _amount);
         staked[msg.sender] += _amount;
         totalStaked += _amount;
-
         emit Staked(msg.sender, _amount);
     }
 
     function withdraw(uint256 _amount) external updateReward(msg.sender) {
         require(staked[msg.sender] >= _amount, "insufficient staked token");
-        stakingToken.transfer(_amount, msg.sender);
+        stackingToken.transfer(_amount, msg.sender);
         staked[msg.sender] -= _amount;
         totalStaked -= _amount;
-
-        emit Withdrawn(_amount, msg.sender);
+        emit Withdraw(_amount, msg.sender);
     }
 }
