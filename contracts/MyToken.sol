@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
+import "./ManagedAccess.sol";
 
-contract MyToken {
+contract MyToken is ManagedAccess {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed spender, uint256 amount);
 
@@ -16,13 +17,13 @@ contract MyToken {
     constructor(
         string memory _name,
         string memory _symbol,
-        uint8 _decimal,
+        uint8 _decimals,
         uint256 _amount
-    ) {
+    ) ManagedAccess(msg.sender, msg.sender) {
         name = _name;
         symbol = _symbol;
-        decimals = _decimal;
-        _mint(_amount * 10 ** uint256(decimals), msg.sender); // 1 MT
+        decimals = _decimals;
+        _mint(_amount * 10 ** uint256(decimals), msg.sender);
     }
 
     function approve(address spender, uint256 amount) external {
@@ -32,30 +33,45 @@ contract MyToken {
 
     function transferFrom(address from, address to, uint256 amount) external {
         address spender = msg.sender;
-        require(allowance[from][spender] >= amount, "insufficient allowance");
+        require(allowance[from][spender] >= amount, "Insufficient allowance");
         allowance[from][spender] -= amount;
         balanceOf[from] -= amount;
         balanceOf[to] += amount;
         emit Transfer(from, to, amount);
     }
 
-    function mint(uint256 amount, address owner) external {
-        _mint(amount, owner);
+    function mint(uint256 amount, address to) external onlyManager {
+        _mint(amount, to);
     }
 
-    function _mint(uint256 amount, address owner) internal {
+    function setManager(address _manager) external onlyOwner {
+        manager = _manager;
+    }
+
+    function _mint(uint256 amount, address to) internal {
         totalSupply += amount;
-        balanceOf[owner] = balanceOf[owner] + amount;
+        balanceOf[to] += amount;
 
-        emit Transfer(address(0), owner, amount);
+        emit Transfer(address(0), to, amount);
     }
 
-    function transfer(uint256 amount, address to) external {
-        require(balanceOf[msg.sender] >= amount, "insufficient balance");
-
+    function transfer(address to, uint256 amount) external {
+        require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
         balanceOf[to] += amount;
 
         emit Transfer(msg.sender, to, amount);
     }
+
+    // function totalSupply() external view returns (uint256) {
+    //     return totalSupply;
+    // }
+
+    // function balanceOf(address owner) external view returns (uint256) {
+    //     return balanceOf[owner];
+    // }
+
+    // function name() external view returns (string memory) {
+    //     return name;
+    // }
 }
